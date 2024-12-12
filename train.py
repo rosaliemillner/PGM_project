@@ -10,6 +10,7 @@ from torch import optim
 from torch.optim import lr_scheduler
 from tqdm import tqdm
 
+from utils import elbo_loss
 cudnn.benchmark = True
 
 
@@ -65,12 +66,14 @@ def evalutrain_model(model,
                             targets_one_hot = torch.zeros(labels.size(0), 6)  # Shape: (batch_size, 6)
                             targets_one_hot[torch.arange(labels.size(0)), labels] = 1
                             loss = criterion(logits, targets_one_hot.to(device))
-                        else:
-                            recon_x, mu, var = outputs
-                            reconstruction_loss = criterion(recon_x, inputs)
-                            kl_div = -torch.sum(1 + torch.log(var**2) - mu**2 - var**2)
+                        elif model_type == 'vae_gbz':
+                            # Forward pass
+                            recon_x, log_prob_y, mu, logvar = model(inputs)
 
-                            loss = reconstruction_loss + kl_div
+                            # Compute loss
+                            loss, _, _ = elbo_loss(recon_x, inputs, mu, logvar)
+
+                            logits = log_prob_y
 
                         # backward + optimize only if in training phase
                         if phase == 'train':

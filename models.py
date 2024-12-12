@@ -1,4 +1,5 @@
-from torch import nn
+import torch
+import torch.nn as nn
 from torchvision import models
 import torch.nn.functional as F
 
@@ -94,6 +95,7 @@ class Decoder(nn.Module):
         h = F.relu(self.deconv1(h))  # Première convolution transposée
         return torch.sigmoid(self.deconv2(h))  # Deuxième convolution transposée
 
+
 # Classifier for p(y|z)
 
 class Classifier(nn.Module):
@@ -105,6 +107,7 @@ class Classifier(nn.Module):
     def forward(self, z):
         h = F.relu(self.fc1(z))
         return F.log_softmax(self.fc2(h), dim=1)
+
 
 # GBZ Model
 

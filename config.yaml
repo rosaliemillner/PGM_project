@@ -10,7 +10,7 @@ training:
 data:
     data_dir: './Data/'
     annos_file: './annotations_classif.json'
-    image_size: 70
+    image_size: 68
 
 optimizer:
     name: 'ADAM'

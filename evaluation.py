@@ -33,7 +33,8 @@ def test_evaluation(fit_model,
                     train_accs,
                     val_losses,
                     val_accs,
-                    device='cpu'):
+                    device='cpu',
+                    type_model='vae'):
     """
     model.eval() mode, returns information to print for evaluate performances
     on a test set for example.
@@ -76,7 +77,11 @@ def test_evaluation(fit_model,
 
     for image, label in tqdm(dataset):
         with torch.no_grad():
-            output = fit_model(image.unsqueeze(0))
+            if type_model == 'vae':
+                recon_x, log_prob_y, mu, logvar = fit_model(image.unsqueeze(0))
+                output = log_prob_y
+            else:
+                output = fit_model(image.unsqueeze(0))
             _, preds = torch.max(output, 1)
             probs_positive.append(F.softmax(output.cpu(), dim=1).flatten()[1].numpy())
 
