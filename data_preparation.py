@@ -72,6 +72,7 @@ class ImageDataset(torch.utils.data.Dataset):
             image = self.transform(pil_image)  # tensor image
         else:
             image = transforms.ToTensor()(pil_image)
+
         return image, label
 
 

@@ -58,9 +58,8 @@ def evalutrain_model(model,
 
                     # forward
                     with torch.set_grad_enabled(phase == 'train'):
-                        outputs = model(inputs)
-
                         if model_type == 'convnet':
+                            outputs = model(inputs)
                             logits = outputs.logits if hasattr(outputs, 'logits') else outputs
 
                             targets_one_hot = torch.zeros(labels.size(0), 6)  # Shape: (batch_size, 6)
@@ -68,12 +67,11 @@ def evalutrain_model(model,
                             loss = criterion(logits, targets_one_hot.to(device))
                         elif model_type == 'vae_gbz':
                             # Forward pass
-                            recon_x, log_prob_y, mu, logvar = model(inputs)
-
+                            recon_x, log_probs_y, mu, logvar = model(inputs, labels)
                             # Compute loss
                             loss, _, _ = elbo_loss(recon_x, inputs, mu, logvar)
 
-                            logits = log_prob_y
+                            logits = log_probs_y
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
