@@ -1,13 +1,10 @@
 '''training and val module.'''
 import os
 import time
-from typing import Dict, Any
 from tempfile import TemporaryDirectory
 
 import torch
 from torch.backends import cudnn
-from torch import optim
-from torch.optim import lr_scheduler
 from tqdm import tqdm
 
 from utils import elbo_loss
@@ -16,14 +13,14 @@ cudnn.benchmark = True
 
 # le dataloader de cette fonction est un dictionnaire comportant 2 dataloaders
 def evalutrain_model(model,
-                model_type: str,
-                dataloaders,
-                image_datasets,
-                criterion,
-                optimizer,
-                scheduler,
-                device,
-                num_epochs=25):
+                     model_type: str,
+                     dataloaders,
+                     image_datasets,
+                     criterion,
+                     optimizer,
+                     scheduler,
+                     device,
+                     num_epochs=25):
     '''train and val function.'''
 
     since = time.time()
@@ -65,11 +62,12 @@ def evalutrain_model(model,
                             targets_one_hot = torch.zeros(labels.size(0), 6)  # Shape: (batch_size, 6)
                             targets_one_hot[torch.arange(labels.size(0)), labels] = 1
                             loss = criterion(logits, targets_one_hot.to(device))
+
                         elif model_type == 'vae_gbz':
                             # Forward pass
-                            recon_x, log_probs_y, mu, logvar = model(inputs, labels)
+                            recon_x, log_probs_y, mu, logvar = model(inputs)
                             # Compute loss
-                            loss, _, _ = elbo_loss(recon_x, inputs, mu, logvar)
+                            loss, _, _, _ = elbo_loss(inputs, recon_x, labels, log_probs_y, mu, logvar)
 
                             logits = log_probs_y
 

@@ -3,18 +3,13 @@ import torch
 import torch.nn.functional as F
 
 
-def elbo_loss(recon_x, x, mu, logvar, num_samples=1):
-    """
-    Compute the ELBO loss based on Kingma and al 2014.
-
-    """
-
-    # 1. Divergence KL
-    kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1).mean()
-
-    # 2. Reconstruction log-likelihood (Monte Carlo approximation if num_samples > 1)
-    recon_loss = F.binary_cross_entropy(recon_x, x, reduction='sum') / x.size(0)
-
-    # Total ELBO loss
-    elbo = kl_div + recon_loss
-    return elbo, recon_loss, kl_div
+# Loss Function (Kingma et al., 2014)
+def elbo_loss(x, x_recon, y, y_pred, mu, logvar):
+    # Reconstruction loss (binary cross-entropy)
+    recon_loss = F.binary_cross_entropy(x_recon, x, reduction='sum')
+    # KL divergence
+    kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+    # Classification loss (cross-entropy)
+    class_loss = F.cross_entropy(y_pred, y)
+    # Total loss
+    return recon_loss + kl_loss + class_loss, recon_loss, kl_loss, class_loss

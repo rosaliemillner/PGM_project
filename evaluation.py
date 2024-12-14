@@ -10,21 +10,21 @@ from tqdm import tqdm
 from PIL import Image
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
-from attacks import fgsm_attack, more_pixel_attack
+from attacks import fgsm_attack, pixel_attack
 
 
-def plot_confusion_matrix(true_labels, pred_labels):
+def plot_confusion_matrix(true_labels, pred_labels, attack_name=None):
     '''plot the confusion matrix.'''
     cm = confusion_matrix(true_labels, pred_labels)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
 
-    plt.figure(figsize=(8,6))
+    plt.figure(figsize=(8, 6))
     disp.plot(cmap=plt.colormaps['Blues'])
     # plt.title('Confusion Matrix')
     plt.xlabel('Predicted Label')
     plt.ylabel('True Label')
 
-    plt.savefig('./Inference/confusion_matrix.pdf')
+    plt.savefig(f'./Inference/confusion_matrix_{attack_name}.pdf' if attack_name else './Inference/confusion_matrix.pdf')
 
     return cm
 
@@ -47,15 +47,18 @@ def test_evaluation(fit_model,
     true_labels = []
     pred_labels = []
     probs_positive = []
+    logits = []
 
     if not attack:
         for image, label in tqdm(dataset):
             with torch.no_grad():
-                if type_model == 'vae':
+                if type_model == 'vae_gbz':
                     recon_x, log_prob_y, mu, logvar = fit_model(image.unsqueeze(0))
                     output = log_prob_y
                 else:
                     output = fit_model(image.unsqueeze(0))
+                logits.append(output.cpu().numpy())
+
                 _, preds = torch.max(output, 1)
                 probs_positive.append(F.softmax(output.cpu(), dim=1).flatten()[1].numpy())
 
@@ -66,13 +69,15 @@ def test_evaluation(fit_model,
 
     if attack:
         labels = [label for _, label in dataset]
+        labels = labels[:len(adv_images)]
         for image, label in tqdm(zip(adv_images, labels)):
             with torch.no_grad():
-                if type_model == 'vae':
-                    recon_x, log_prob_y, mu, logvar = fit_model(image)
+                if type_model == 'vae_gbz':
+                    recon_x, log_prob_y, mu, logvar = fit_model(image.unsqueeze(0))
                     output = log_prob_y
                 else:
-                    output = fit_model(image)
+                    output = fit_model(image.unsqueeze(0).to(device))
+                logits.append(output.cpu().numpy())
                 _, preds = torch.max(output, 1)
                 probs_positive.append(F.softmax(output.cpu(), dim=1).flatten()[1].numpy())
 
@@ -81,13 +86,14 @@ def test_evaluation(fit_model,
 
             fit_model.train(mode=was_training)
 
-    return true_labels, pred_labels, probs_positive
+    return true_labels, pred_labels, probs_positive, logits
 
 
 def plot_acc_train(train_losses,
                    train_accs,
                    val_losses,
-                   val_accs):
+                   val_accs,
+                   type_model='vae'):
 
     idx = []
     for count in range(len(val_accs)):
@@ -96,14 +102,24 @@ def plot_acc_train(train_losses,
 
     plt.figure(figsize=(10, 3))
 
-    plt.subplot(1, 2, 1)
-    plt.plot(train_losses, marker='o', linestyle='-', label='train loss')
-    plt.legend()
+    if type_model == 'vae':
+        plt.subplot(1, 2, 1)
+        plt.plot(train_losses, marker='o', linestyle='-', label='train loss')
+        plt.legend()
 
-    plt.subplot(1, 2, 1)
-    plt.plot(val_losses, marker='o', linestyle='-', label='val loss')
-    plt.ylim(0, 1)
-    plt.legend()
+        plt.subplot(1, 2, 1)
+        plt.plot(val_losses, marker='o', linestyle='-', label='val loss')
+        plt.legend()
+
+    else:
+        plt.subplot(1, 2, 1)
+        plt.plot(train_losses, marker='o', linestyle='-', label='train loss')
+        plt.legend()
+
+        plt.subplot(1, 2, 1)
+        plt.plot(val_losses, marker='o', linestyle='-', label='val loss')
+        plt.ylim(0, 1)
+        plt.legend()
 
     plt.subplot(1, 2, 2)
     plt.plot(train_accs, marker='o', linestyle='-', label='train acc')
@@ -120,27 +136,29 @@ def plot_acc_train(train_losses,
 def perform_attack(fit_model,
                    dataset,
                    model_type='vae',
-                   attack='fgsm') -> list:
+                   attack='fgsm',
+                   epsilon=0.05) -> list:
     """
     model.eval() mode, returns information to print for evaluate performances
     on a test set for example.
     """
     adv_images = []
-    for image, label in tqdm(dataset):
+    for count, (image, label) in tqdm(enumerate(dataset)):
         if attack == 'fsgm':
             perturbed_image = fgsm_attack(image.unsqueeze(0),
                                           label,
                                           fit_model,
-                                          model_type=model_type,
-                                          epsilon=0.1
+                                          epsilon=epsilon,
+                                          model_type=model_type
                                           )
             adv_images.append(perturbed_image)
-        else:
-            perturbed_image = more_pixel_attack(image.unsqueeze(0),
-                                                label,
-                                                fit_model,
-                                                num_pixels=3,
-                                                max_iter=100
-                                                )
+        elif attack == 'pixel':
+            perturbed_image = pixel_attack(image.unsqueeze(0),
+                                           label,
+                                           fit_model,
+                                           num_pixels=10,
+                                           max_iter=100,
+                                           type_model=model_type
+                                           )
             adv_images.append(perturbed_image)
     return adv_images
