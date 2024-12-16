@@ -1,16 +1,13 @@
-import os
-import json
 import torch
 import numpy as np
-from torchvision import transforms
 import matplotlib.pyplot as plt
 from torch.nn import functional as F
 from tqdm import tqdm
 
-from PIL import Image
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
-from attacks import fgsm_attack, pixel_attack
+from attacks import fgsm_attack, pixel_attack, change_brightness, adjust_contrast
+from attacks import pgd_attack, cw_attack
 
 
 def plot_confusion_matrix(true_labels, pred_labels, attack_name=None):
@@ -32,7 +29,7 @@ def plot_confusion_matrix(true_labels, pred_labels, attack_name=None):
 def test_evaluation(fit_model,
                     dataset,
                     device='cpu',
-                    type_model='vae',
+                    type_model='vae_gbz',
                     attack=False,
                     adv_images=None):
     """
@@ -73,10 +70,10 @@ def test_evaluation(fit_model,
         for image, label in tqdm(zip(adv_images, labels)):
             with torch.no_grad():
                 if type_model == 'vae_gbz':
-                    recon_x, log_prob_y, mu, logvar = fit_model(image.unsqueeze(0))
+                    recon_x, log_prob_y, mu, logvar = fit_model(image)
                     output = log_prob_y
                 else:
-                    output = fit_model(image.unsqueeze(0).to(device))
+                    output = fit_model(image.to(device))
                 logits.append(output.cpu().numpy())
                 _, preds = torch.max(output, 1)
                 probs_positive.append(F.softmax(output.cpu(), dim=1).flatten()[1].numpy())
@@ -93,7 +90,7 @@ def plot_acc_train(train_losses,
                    train_accs,
                    val_losses,
                    val_accs,
-                   type_model='vae'):
+                   type_model):
 
     idx = []
     for count in range(len(val_accs)):
@@ -102,7 +99,7 @@ def plot_acc_train(train_losses,
 
     plt.figure(figsize=(10, 3))
 
-    if type_model == 'vae':
+    if type_model == 'vae_gbz':
         plt.subplot(1, 2, 1)
         plt.plot(train_losses, marker='o', linestyle='-', label='train loss')
         plt.legend()
@@ -130,20 +127,20 @@ def plot_acc_train(train_losses,
     plt.axvline(x=int(idx[-1]), color='orange', linestyle='--', label='Max Val Accuracy')
     plt.legend()
 
-    plt.savefig('./Inference/train_val_loss_acc.pdf')
+    plt.savefig(f'./Inference/train_val_loss_acc_{type_model}.pdf')
 
 
 def perform_attack(fit_model,
                    dataset,
-                   model_type='vae',
-                   attack='fgsm',
+                   model_type,
+                   attack,
                    epsilon=0.05) -> list:
     """
     model.eval() mode, returns information to print for evaluate performances
     on a test set for example.
     """
     adv_images = []
-    for count, (image, label) in tqdm(enumerate(dataset)):
+    for image, label in tqdm(dataset):
         if attack == 'fsgm':
             perturbed_image = fgsm_attack(image.unsqueeze(0),
                                           label,
@@ -160,5 +157,25 @@ def perform_attack(fit_model,
                                            max_iter=100,
                                            type_model=model_type
                                            )
+            adv_images.append(perturbed_image)
+        elif attack == 'brightness':
+            perturbed_image = change_brightness(image.unsqueeze(0))
+            adv_images.append(perturbed_image)
+        elif attack == 'contrast':
+            perturbed_image = adjust_contrast(image.unsqueeze(0))
+            adv_images.append(perturbed_image)
+        elif attack == 'pgd':
+            perturbed_image = pgd_attack(image.unsqueeze(0),
+                                         label,
+                                         fit_model,
+                                         model_type=model_type
+                                         )
+            adv_images.append(perturbed_image)
+        elif attack == 'cw':
+            perturbed_image = cw_attack(image.unsqueeze(0),
+                                        label,
+                                        fit_model,
+                                        model_type=model_type
+                                        )
             adv_images.append(perturbed_image)
     return adv_images

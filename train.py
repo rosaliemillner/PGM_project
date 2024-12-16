@@ -11,7 +11,7 @@ from utils import elbo_loss
 cudnn.benchmark = True
 
 
-# le dataloader de cette fonction est un dictionnaire comportant 2 dataloaders
+# le dataloader dans cette fonction est un dictionnaire comportant 2 dataloaders
 def evalutrain_model(model,
                      model_type: str,
                      dataloaders,
@@ -20,7 +20,7 @@ def evalutrain_model(model,
                      optimizer,
                      scheduler,
                      device,
-                     num_epochs=25):
+                     num_epochs):
     '''train and val function.'''
 
     since = time.time()

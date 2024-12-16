@@ -101,6 +101,6 @@ def train_val_dataloader(datasets, batch_size):
                                                        batch_size=batch_size,
                                                        shuffle=True)
     dataloaders['val'] = torch.utils.data.DataLoader(datasets['val'],
-                                                       batch_size=batch_size,
-                                                       shuffle=True)
+                                                     batch_size=batch_size,
+                                                     shuffle=True)
     return dataloaders

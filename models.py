@@ -11,7 +11,6 @@ class FineTunedResNet18(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # Load the pre-trained ResNet-34 model
         self.resnet = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
 
         self.resnet.conv1 = nn.Conv2d(
@@ -22,15 +21,16 @@ class FineTunedResNet18(nn.Module):
                     padding=self.resnet.conv1.padding
                 )
 
-        # Freeze all parameters by default
+        # Freeze all parameters to fine-tune
         for param in self.resnet.parameters():
             param.requires_grad = False
 
-        # Replace the fully connected layer with a new one
+        # Replace the fully connected layer with a new one,
+        # corresponding to our number of classes
         num_features = self.resnet.fc.in_features
         self.resnet.fc = nn.Linear(num_features, 6)
 
-        # Unfreeze the last 'fine_tune_layers' layers
+        # Unfreeze the last layers
         for param in self.resnet.layer4[-2:].parameters():
             param.requires_grad = True
         for param in self.resnet.fc.parameters():
@@ -45,7 +45,7 @@ class FineTunedResNet18(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, latent_dim):
         super(Encoder, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=4, stride=2, padding=1)  # Adapté pour 3 canaux (RGB)
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=4, stride=2, padding=1)  # Adapté pour 1 canaux (RGB)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1)  # Output: (64, 17, 17)
         self.fc1 = nn.Linear(64 * 17 * 17, 256)
         self.fc_mu = nn.Linear(256, latent_dim)
@@ -68,7 +68,7 @@ class Decoder(nn.Module):
         self.fc1 = nn.Linear(latent_dim, 256)
         self.fc2 = nn.Linear(256, 64 * 17 * 17)
         self.deconv1 = nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1)  # Output: (32, 34, 34)
-        self.deconv2 = nn.ConvTranspose2d(32, 1, kernel_size=4, stride=2, padding=1)  # Adapté pour 3 canaux (RGB)
+        self.deconv2 = nn.ConvTranspose2d(32, 1, kernel_size=4, stride=2, padding=1)  # Adapté pour 1 canaux (RGB)
 
     def forward(self, z):
         z = F.relu(self.fc1(z))

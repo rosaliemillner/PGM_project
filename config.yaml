@@ -3,7 +3,7 @@ model:
     num_classes: 6
 
 training:
-    num_epochs: 20
+    num_epochs: 10
     learning_rate: 0.003
     batch_size: 64
 
