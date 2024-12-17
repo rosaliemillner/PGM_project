@@ -159,7 +159,7 @@ def perform_attack(fit_model,
                                            )
             adv_images.append(perturbed_image)
         elif attack == 'brightness':
-            perturbed_image = change_brightness(image.unsqueeze(0))
+            perturbed_image = change_brightness(image.unsqueeze(0), factor=1.3)
             adv_images.append(perturbed_image)
         elif attack == 'contrast':
             perturbed_image = adjust_contrast(image.unsqueeze(0))
@@ -168,14 +168,16 @@ def perform_attack(fit_model,
             perturbed_image = pgd_attack(image.unsqueeze(0),
                                          label,
                                          fit_model,
-                                         model_type=model_type
+                                         model_type=model_type,
+                                         epsilon=epsilon,
                                          )
             adv_images.append(perturbed_image)
         elif attack == 'cw':
             perturbed_image = cw_attack(image.unsqueeze(0),
                                         label,
                                         fit_model,
-                                        model_type=model_type
+                                        model_type=model_type,
+                                        device='cuda' if torch.cuda.is_available() else 'cpu'
                                         )
             adv_images.append(perturbed_image)
     return adv_images

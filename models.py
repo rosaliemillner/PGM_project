@@ -13,6 +13,7 @@ class FineTunedResNet18(nn.Module):
 
         self.resnet = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
 
+        # Change the first layer to accept to handle grayscale images
         self.resnet.conv1 = nn.Conv2d(
                     in_channels=1,  # grayscale
                     out_channels=self.resnet.conv1.out_channels,
@@ -21,7 +22,7 @@ class FineTunedResNet18(nn.Module):
                     padding=self.resnet.conv1.padding
                 )
 
-        # Freeze all parameters to fine-tune
+        # freeze parameters when fine-tuning
         for param in self.resnet.parameters():
             param.requires_grad = False
 
@@ -30,15 +31,17 @@ class FineTunedResNet18(nn.Module):
         num_features = self.resnet.fc.in_features
         self.resnet.fc = nn.Linear(num_features, 6)
 
-        # Unfreeze the last layers
+        # Unfreeze the last layers to learn new classification task
         for param in self.resnet.layer4[-2:].parameters():
             param.requires_grad = True
         for param in self.resnet.fc.parameters():
             param.requires_grad = True
 
     def forward(self, x):
-        '''forward path'''
         return self.resnet(x)
+
+    def get_z(self, x):
+        return self.resnet.avgpool(x)
 
 
 # Encoder: q(z|x)
@@ -73,7 +76,7 @@ class Decoder(nn.Module):
     def forward(self, z):
         z = F.relu(self.fc1(z))
         z = F.relu(self.fc2(z))
-        z = z.view(z.size(0), 64, 17, 17)  # Reshape
+        z = z.view(z.size(0), 64, 17, 17)
         z = F.relu(self.deconv1(z))
         z = torch.sigmoid(self.deconv2(z))  # Pixel values in [0, 1]
         return z
@@ -109,8 +112,14 @@ class GBZ(nn.Module):
         # Encode
         mu, logvar = self.encoder(x)
         z = self.reparameterize(mu, logvar)
+        self.z = z
         # Decode
         x_recon = self.decoder(z)
         # Classify
         y_pred = self.classifier(z)
+
         return x_recon, y_pred, mu, logvar
+
+    def get_z(self, x):
+        self.forward(x)
+        return self.z

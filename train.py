@@ -29,7 +29,7 @@ def evalutrain_model(model,
     print(dataset_sizes, image_datasets['train'][2][0].size())
     # Create a temporary directory to save training checkpoints
     with TemporaryDirectory() as tempdir:
-        best_model_params_path = os.path.join(tempdir, 'best_model_params.pt')
+        best_model_params_path = os.path.join(tempdir, f'best_model_params_{model_type}.pt')
 
         torch.save(model.state_dict(), best_model_params_path)
         best_acc = 0.0
@@ -41,9 +41,9 @@ def evalutrain_model(model,
             # Each epoch has a training and validation phase
             for phase in ['train', 'val']:
                 if phase == 'train':
-                    model.train()  # Set model to training mode
+                    model.train()
                 else:
-                    model.eval()   # Set model to evaluate mode
+                    model.eval()
 
                 running_loss = 0.0
                 running_corrects = 0

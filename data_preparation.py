@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 
 
 def generate_json_annotations(img_path, annotation_file):
-    '''generates the json file for annotation'''
+    '''generates a json file for annotation'''
     try:
         if not os.path.exists(img_path):
             raise FileNotFoundError(f"folder {img_path} does not exists")
@@ -58,8 +58,8 @@ class ImageDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         '''get item'''
-        id = self.img_labels[idx]['filename']  # string object
-        label = self.img_labels[idx]['label']  # string object
+        id = self.img_labels[idx]['filename']
+        label = self.img_labels[idx]['label']
 
         for idx, name in enumerate(os.listdir(self.img_dir)):
             if idx != label:
