@@ -1,5 +1,6 @@
 # Are Generative Classifiers More Reliable for Medical Imaging? Insights from Adversarial and Non-Adversarial Perturbations
 Final project for the 2024-2025 course: Probabilistic Graphical Models.
+---
 
 Please use `requirements.txt` or `environment.yml` to run the provided code.
 
